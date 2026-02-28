@@ -1,7 +1,10 @@
 # AgentOps Demo Script (3 minutes)
 
 > Run `bash scripts/reset_demo.sh` before each demo attempt.
-> Then start: Terminal 1: `bash dashboard/run_dashboard.sh` | Terminal 2: ready for `bash run_demo.sh`
+> Then start:
+> - Terminal 1: `bash backend/run.sh` (FastAPI backend on :8080)
+> - Terminal 2: `cd frontend && npm run dev` (React frontend on :5173)
+> - Terminal 3: ready for `bash run_demo.sh`
 
 ---
 
@@ -20,7 +23,7 @@
 
 ## 0:15–0:30 — Healthy Dashboard
 
-**Show:** Browser at `http://localhost:8502` — **Status** tab
+**Show:** Browser at `http://localhost:5173` — **Metrics** tab
 
 **Point out:**
 - F1 Score: ~0.91 baseline over 7 days (blue trend line)
@@ -103,15 +106,19 @@
 
 ---
 
-## 2:30–2:45 — Crew Output (Optional — if time permits)
+## 2:30–2:45 — Crew Execution (Optional — if time permits)
 
-**Action:** Switch to **Crew Output** tab
+**Action:** Click **"Run Full Crew"** button in sidebar → auto-switches to **Crew AI** tab
+
+**What happens:**
+- Real-time terminal shows live agent execution with color-coded output
+- Cyan = agent activity, Yellow = tool calls, Green = task completion
+- All three agents run sequentially: Monitor → Investigator → Remediator
 
 **Say:**
 > "For the full autonomous flow, our CrewAI crew runs all three agents
-> end-to-end without manual intervention."
-
-**Action:** (If already ran crew earlier) Show the full output with agent reasoning
+> end-to-end without manual intervention. You can watch each agent's
+> reasoning and tool calls in real time via our streaming terminal."
 
 ---
 
@@ -137,8 +144,10 @@
 [ ] Verify: Snowflake data shows drift (latest F1 ~0.82, drift ~0.44)
 [ ] Verify: RAG system running (curl http://localhost:8003/health)
 [ ] Verify: ML Monitoring running (curl http://localhost:8000/health)
-[ ] Launch: bash dashboard/run_dashboard.sh
-[ ] Open:   http://localhost:8502 in browser
+[ ] Launch: bash backend/run.sh  (FastAPI on :8080)
+[ ] Launch: cd frontend && npm run dev  (React on :5173)
+[ ] Verify: curl http://localhost:8080/api/health  (all services true)
+[ ] Open:   http://localhost:5173 in browser
 [ ] Test:   Click through all tabs once to warm up connections
 [ ] Clear:  Refresh the page to reset session state
 ```

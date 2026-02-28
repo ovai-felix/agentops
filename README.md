@@ -10,8 +10,13 @@ Built for the [Llama Lounge Agentic Hackathon](https://cerebralvalley.ai/e/llama
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                   Streamlit Dashboard                    │
-│  Status │ Alerts │ Investigation │ Actions │ Crew Output │
+│            React Dashboard (Vite + Tailwind)             │
+│  Metrics │ Alerts │ Investigation │ Actions │ Crew AI    │
+│                    ↕ SSE real-time streaming              │
+└────────────────────────┬────────────────────────────────┘
+                         │ REST + SSE
+┌────────────────────────▼────────────────────────────────┐
+│                  FastAPI Backend (:8080)                  │
 └────────────────────────┬────────────────────────────────┘
                          │
 ┌────────────────────────▼────────────────────────────────┐
@@ -95,7 +100,11 @@ python scripts/ingest_docs.py     # Ingests runbooks + incidents into RAG
 
 **Dashboard (interactive demo):**
 ```bash
-bash dashboard/run_dashboard.sh   # Opens at http://localhost:8502
+# Terminal 1: FastAPI backend
+bash backend/run.sh               # API on http://localhost:8080
+
+# Terminal 2: React frontend
+cd frontend && npm run dev         # Dashboard at http://localhost:5173
 ```
 
 **CLI (autonomous crew):**
@@ -119,8 +128,18 @@ bash scripts/reset_demo.sh        # Resets Snowflake data + kills services
 
 ```
 agentops/
-├── dashboard/
-│   └── streamlit_app.py          # 5-tab Streamlit dashboard
+├── backend/
+│   ├── api.py                    # FastAPI REST + SSE endpoints
+│   ├── event_bus.py              # Thread-safe pub/sub for crew streaming
+│   ├── stdout_capture.py         # stdout → EventBus with line classification
+│   └── run.sh                    # Backend startup script
+├── frontend/
+│   ├── src/
+│   │   ├── App.jsx               # Tab router + SSE hook wiring
+│   │   ├── api.js                # fetch helpers + useCrewStream hook
+│   │   ├── context/AppContext.jsx # Global state (useReducer)
+│   │   └── components/           # MetricsTab, AlertsTab, Terminal, etc.
+│   └── vite.config.js            # Vite + Tailwind + API proxy
 ├── incidents/                    # 8 historical incident reports
 ├── runbooks/                     # 6 operational runbooks
 ├── seed/
@@ -159,7 +178,9 @@ agentops/
 - **Knowledge:** RAG (hybrid retrieval with vector + BM25 + cross-encoder reranking)
 - **Integrations:** Composio (Slack, GitHub)
 - **ML Platform:** FastAPI with blue-green deployment
-- **Dashboard:** Streamlit
+- **Dashboard:** React 18 + Vite + Tailwind CSS
+- **Real-time:** SSE (Server-Sent Events) for live crew streaming
+- **API:** FastAPI + sse-starlette
 - **Language:** Python 3.11+
 
 ## Team

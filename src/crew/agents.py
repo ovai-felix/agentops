@@ -1,6 +1,7 @@
 """CrewAI agent definitions for AgentOps."""
-from crewai import Agent
+from crewai import Agent, LLM
 
+from config import settings
 from tools.snowflake_tools import (
     query_model_metrics,
     query_feature_drift,
@@ -22,6 +23,14 @@ try:
 except Exception:
     composio_tools = []
 
+# Configure LLM based on available API keys
+if settings.anthropic_api_key:
+    _llm = LLM(model="anthropic/claude-sonnet-4-20250514", api_key=settings.anthropic_api_key)
+elif settings.openai_api_key:
+    _llm = LLM(model="openai/gpt-4o", api_key=settings.openai_api_key)
+else:
+    _llm = None  # CrewAI default
+
 monitor_agent = Agent(
     role="ML Model Monitor",
     goal="Continuously monitor ML model health and data pipeline quality. "
@@ -33,6 +42,7 @@ monitor_agent = Agent(
               "null_rate < 0.05, anomaly_rate < 0.10. When metrics breach these "
               "thresholds, you raise alerts with severity and evidence.",
     tools=[query_model_metrics, query_feature_drift, query_data_quality, check_model_health],
+    llm=_llm,
     verbose=True,
     allow_delegation=False,
 )
@@ -48,6 +58,7 @@ investigator_agent = Agent(
               "to pinpoint when the problem started. You provide clear root cause "
               "analysis with confidence levels and cite your sources.",
     tools=[search_runbooks, search_incidents, query_metric_trend, query_feature_drift],
+    llm=_llm,
     verbose=True,
     allow_delegation=False,
 )
@@ -66,6 +77,7 @@ remediator_agent = Agent(
               "your actions.",
     tools=[trigger_retraining, check_training_status, rollback_model,
            check_model_health] + composio_tools,
+    llm=_llm,
     verbose=True,
     allow_delegation=False,
 )

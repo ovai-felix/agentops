@@ -9,3 +9,5 @@ logs/*.json
 .ruff_cache/
 .mypy_cache/
 .pytest_cache/
+frontend/node_modules/
+frontend/dist/
