@@ -344,6 +344,82 @@ def set_actions(req: SetActionsRequest):
     return {"actions": state.actions}
 
 
+def _execute_slack(diagnosis: dict | None) -> str:
+    """Send a Slack notification via Composio."""
+    from composio import ComposioToolSet, Action
+
+    toolset = ComposioToolSet()
+    channel = settings.slack_channel or "#ml-alerts"
+
+    # Build message from diagnosis or fallback
+    if diagnosis and diagnosis.get("alert"):
+        alert = diagnosis["alert"]
+        msg = f"*[AgentOps Alert]* `{alert.get('alert_type', 'unknown')}`\n"
+        msg += f"Severity: {alert.get('severity', '?').upper()}\n"
+        msg += f"{alert.get('message', '')}\n"
+        if diagnosis.get("root_cause_analysis"):
+            rca = diagnosis["root_cause_analysis"]
+            msg += f"\n*Root Cause:* {rca[:500]}"
+    else:
+        msg = "*[AgentOps]* Action executed — no diagnosis context available."
+
+    kwargs = {"action": Action.SLACK_SENDS_A_MESSAGE_TO_A_SLACK_CHANNEL, "params": {"channel": channel, "text": msg}}
+    if settings.composio_slack_connection_id:
+        kwargs["connected_account_id"] = settings.composio_slack_connection_id
+
+    result = toolset.execute_action(**kwargs)
+    slack_ok = result.get("data", {}).get("ok", False)
+    if slack_ok:
+        return f"Slack message sent to {channel}"
+    slack_err = result.get("data", {}).get("error", "")
+    if slack_err:
+        return f"Slack API error: {slack_err} (channel: {channel})"
+    return f"Slack response: {result}"
+
+
+def _execute_github(diagnosis: dict | None) -> str:
+    """Create a GitHub issue via the GitHub REST API."""
+    import requests as _requests
+
+    repo = settings.github_repo
+    token = settings.github_token
+    if not repo:
+        return "Skipped — GITHUB_REPO not configured in .env"
+    if not token:
+        return "Skipped — GITHUB_TOKEN not configured in .env"
+
+    alert = (diagnosis or {}).get("alert", {})
+    alert_type = alert.get("alert_type", "ML Alert").replace("_", " ")
+    severity = alert.get("severity", "unknown")
+    title = f"[AgentOps] {alert_type} — {severity}"
+
+    body = f"**Alert:** {alert.get('message', 'N/A')}\n\n"
+    if alert.get("metrics"):
+        metrics_str = " | ".join(f"`{k}`: {v}" for k, v in alert["metrics"].items())
+        body += f"**Metrics:** {metrics_str}\n\n"
+    if diagnosis and diagnosis.get("root_cause_analysis"):
+        body += f"**Root Cause Analysis:**\n{diagnosis['root_cause_analysis'][:2000]}\n\n"
+    if diagnosis and diagnosis.get("similar_incidents"):
+        body += f"**Similar Incidents:**\n{diagnosis['similar_incidents'][:1000]}\n"
+
+    labels = ["agentops", severity]
+
+    resp = _requests.post(
+        f"https://api.github.com/repos/{repo}/issues",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+        },
+        json={"title": title, "body": body, "labels": labels},
+        timeout=15,
+    )
+
+    if resp.status_code == 201:
+        issue_url = resp.json().get("html_url", "")
+        return f"GitHub issue created: {issue_url}"
+    return f"GitHub API error {resp.status_code}: {resp.json().get('message', resp.text[:200])}"
+
+
 @app.post("/api/actions/execute")
 def execute_action(req: ActionIndexRequest):
     if req.index < 0 or req.index >= len(state.actions):
@@ -353,8 +429,23 @@ def execute_action(req: ActionIndexRequest):
     if act.get("requires_approval"):
         raise HTTPException(400, "This action requires approval")
 
-    act["status"] = "completed"
-    act["details"] = f"Executed at {datetime.now(UTC).strftime('%H:%M:%S')}"
+    action_name = act.get("action", "").lower()
+    ts = datetime.now(UTC).strftime("%H:%M:%S")
+
+    try:
+        if "slack" in action_name:
+            result = _execute_slack(state.diagnosis)
+            act["details"] = f"{result} at {ts}"
+        elif "github" in action_name:
+            result = _execute_github(state.diagnosis)
+            act["details"] = f"{result} at {ts}"
+        else:
+            act["details"] = f"Executed at {ts}"
+        act["status"] = "completed"
+    except Exception as e:
+        act["status"] = "completed"
+        act["details"] = f"Attempted at {ts} | Error: {e}"
+
     return {"action": act}
 
 
@@ -390,6 +481,51 @@ def deny_action(req: ActionIndexRequest):
     act["status"] = "denied"
     act["details"] = f"Denied at {datetime.now(UTC).strftime('%H:%M:%S')}"
     return {"action": act}
+
+
+# =========================================================================
+# CREW SUMMARY
+# =========================================================================
+
+
+class SummarizeRequest(BaseModel):
+    text: str
+
+
+@app.post("/api/crew/summarize")
+def crew_summarize(req: SummarizeRequest):
+    """Summarize a crew result using the configured LLM."""
+    prompt = (
+        "You are an ML operations assistant. Summarize the following crew execution result "
+        "in 3-5 concise bullet points. Focus on: what was detected, root cause, and actions taken or recommended. "
+        "Be specific with metric values when available.\n\n"
+        f"{req.text[:8000]}"
+    )
+
+    if settings.anthropic_api_key:
+        import anthropic
+
+        client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        msg = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=512,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        summary = msg.content[0].text
+    elif settings.openai_api_key:
+        import openai
+
+        client = openai.OpenAI(api_key=settings.openai_api_key)
+        resp = client.chat.completions.create(
+            model="gpt-4o",
+            max_tokens=512,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        summary = resp.choices[0].message.content
+    else:
+        summary = "No LLM API key configured — cannot generate summary."
+
+    return {"summary": summary}
 
 
 # =========================================================================

@@ -23,10 +23,14 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     llm_provider: str = "openai"  # "openai" or "anthropic"
 
-    # Composio
+    # Composio (Slack)
     composio_api_key: str = ""
+    composio_slack_connection_id: str = ""
     slack_channel: str = "#ml-alerts"
+
+    # GitHub
     github_repo: str = ""
+    github_token: str = ""
 
     # Agent behavior
     monitor_poll_interval_sec: int = 30

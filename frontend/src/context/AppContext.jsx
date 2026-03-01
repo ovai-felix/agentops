@@ -10,12 +10,14 @@ const initialState = {
   alerts: [],
   incidents: [],
   diagnosis: null,
+  investigationPrefill: null,
   actions: [],
   crewRunning: false,
   crewResult: null,
   crewError: null,
   crewLines: [],
   activeTab: 'metrics',
+  theme: 'dark',
 }
 
 function reducer(state, action) {
@@ -38,6 +40,10 @@ function reducer(state, action) {
       return { ...state, incidents: action.payload }
     case 'SET_DIAGNOSIS':
       return { ...state, diagnosis: action.payload }
+    case 'PREFILL_INVESTIGATION':
+      return { ...state, investigationPrefill: action.payload }
+    case 'CLEAR_INVESTIGATION_PREFILL':
+      return { ...state, investigationPrefill: null }
     case 'SET_ACTIONS':
       return { ...state, actions: action.payload }
     case 'UPDATE_ACTION':
@@ -62,6 +68,8 @@ function reducer(state, action) {
       return { ...state, crewLines: [], crewResult: null, crewError: null }
     case 'SET_TAB':
       return { ...state, activeTab: action.payload }
+    case 'TOGGLE_THEME':
+      return { ...state, theme: state.theme === 'dark' ? 'light' : 'dark' }
     default:
       return state
   }

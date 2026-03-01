@@ -54,7 +54,7 @@ class StdoutCapture(io.TextIOBase):
             return "task_complete"
         if "thought:" in low or "thinking" in low:
             return "reasoning"
-        if "error" in low or "traceback" in low:
+        if "traceback" in low or "raise " in low or "exception" in low:
             return "error"
         return "stdout"
 

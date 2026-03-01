@@ -46,16 +46,26 @@ export default function Sidebar() {
   }
 
   const services = state.services
+  const dark = state.theme === 'dark'
 
   return (
-    <div className="w-[280px] bg-gray-900 border-r border-gray-800 flex flex-col shrink-0 h-screen">
-      <div className="p-5 border-b border-gray-800">
-        <h1 className="text-xl font-bold tracking-tight">AgentOps</h1>
-        <p className="text-xs text-gray-500 mt-1">ML Monitoring Dashboard</p>
+    <div className={`w-[280px] border-r flex flex-col shrink-0 h-screen ${dark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'}`}>
+      <div className={`p-5 border-b flex items-center justify-between ${dark ? 'border-gray-800' : 'border-gray-200'}`}>
+        <div>
+          <h1 className={`text-xl font-bold tracking-tight ${dark ? '' : 'text-gray-900'}`}>AgentOps</h1>
+          <p className={`text-xs mt-1 ${dark ? 'text-gray-500' : 'text-gray-400'}`}>ML Monitoring Dashboard</p>
+        </div>
+        <button
+          onClick={() => dispatch({ type: 'TOGGLE_THEME' })}
+          className={`p-2 rounded-lg text-sm transition-colors ${dark ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}
+          title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {dark ? '\u2600\uFE0F' : '\u{1F319}'}
+        </button>
       </div>
 
-      <div className="p-4 border-b border-gray-800">
-        <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+      <div className={`p-4 border-b ${dark ? 'border-gray-800' : 'border-gray-200'}`}>
+        <h2 className={`text-xs font-semibold uppercase tracking-wider mb-3 ${dark ? 'text-gray-500' : 'text-gray-400'}`}>
           Services
         </h2>
         {services && typeof services === 'object' ? (
@@ -63,12 +73,12 @@ export default function Sidebar() {
             {Object.entries(services).map(([name, info]) => (
               <div key={name} className="flex items-center gap-2 text-sm">
                 <ServiceDot ok={info != null && (typeof info === 'object' ? info.status === 'ok' : !!info)} />
-                <span className="text-gray-300 capitalize">{name}</span>
+                <span className={`capitalize ${dark ? 'text-gray-300' : 'text-gray-600'}`}>{name}</span>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-xs text-gray-600">Loading...</p>
+          <p className={`text-xs ${dark ? 'text-gray-600' : 'text-gray-400'}`}>Loading...</p>
         )}
       </div>
 
@@ -79,8 +89,8 @@ export default function Sidebar() {
             onClick={() => dispatch({ type: 'SET_TAB', payload: tab.id })}
             className={`w-full text-left px-3 py-2.5 rounded-lg mb-1 text-sm transition-colors ${
               state.activeTab === tab.id
-                ? 'bg-gray-800 text-white font-medium'
-                : 'text-gray-400 hover:bg-gray-800/50 hover:text-gray-200'
+                ? dark ? 'bg-gray-800 text-white font-medium' : 'bg-gray-200 text-gray-900 font-medium'
+                : dark ? 'text-gray-400 hover:bg-gray-800/50 hover:text-gray-200' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800'
             }`}
           >
             {tab.label}
@@ -88,7 +98,7 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-gray-800">
+      <div className={`p-4 border-t ${dark ? 'border-gray-800' : 'border-gray-200'}`}>
         <button
           onClick={handleStartCrew}
           disabled={state.crewRunning}

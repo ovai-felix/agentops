@@ -17,6 +17,8 @@ function TabContent() {
     if (event.event_type === 'complete') {
       dispatch({ type: 'CREW_COMPLETE', payload: event.data })
     } else if (event.event_type === 'error') {
+      // Show error in terminal AND mark crew as failed
+      dispatch({ type: 'CREW_LINE', payload: event })
       dispatch({ type: 'CREW_ERROR', payload: event.data })
     } else if (event.event_type !== 'ping') {
       dispatch({ type: 'CREW_LINE', payload: event })
