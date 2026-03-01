@@ -19,8 +19,11 @@ class StdoutCapture(io.TextIOBase):
         self._buffer = ""
 
     def write(self, text):
-        self._original.write(text)
-        self._original.flush()
+        try:
+            self._original.write(text)
+            self._original.flush()
+        except (BrokenPipeError, OSError):
+            pass  # Original stdout closed — still capture for event bus
 
         self._buffer += text
         while "\n" in self._buffer:
@@ -36,7 +39,10 @@ class StdoutCapture(io.TextIOBase):
         return len(text)
 
     def flush(self):
-        self._original.flush()
+        try:
+            self._original.flush()
+        except (BrokenPipeError, OSError):
+            pass
 
     def writable(self):
         return True

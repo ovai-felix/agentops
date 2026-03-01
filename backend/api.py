@@ -564,6 +564,10 @@ def crew_start():
             result = crew.run(context="Check for model drift — elevated drift on V14 and V17.")
             state.crew_result = result
             event_bus.publish(CrewEvent(event_type="complete", data=result))
+        except BrokenPipeError:
+            msg = "Broken pipe — stdout closed, but crew may have completed."
+            state.crew_error = msg
+            event_bus.publish(CrewEvent(event_type="error", data=msg))
         except Exception as e:
             state.crew_error = str(e)
             event_bus.publish(CrewEvent(event_type="error", data=str(e)))
